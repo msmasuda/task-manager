@@ -1,0 +1,475 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum BookingMode {
+  AUTO_CONFIRM
+  MANUAL_CONFIRM
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+  NO_SHOW
+}
+
+enum AppointmentSource {
+  WEB
+  PHONE
+  WALK_IN
+  STAFF
+}
+
+enum AssignmentType {
+  PRIMARY
+  SUPPORT
+}
+
+enum ScheduleExceptionType {
+  CLOSED
+  SPECIAL_HOURS
+}
+
+enum TimeOffType {
+  BREAK
+  PAID_LEAVE
+  SICK_LEAVE
+  OTHER
+}
+
+enum TokenPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id                 String                   @id @default(cuid())
+  name               String
+  email              String                   @unique
+  passwordHash       String
+  emailVerifiedAt    DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  sessions           Session[]
+  memberships        OrganizationMember[]
+  locationMemberships LocationMember[]
+  invitationsSent    OrganizationInvitation[] @relation("InvitationSender")
+  tokens             UserToken[]
+  schedules          StaffSchedule[]
+  timeOffs           StaffTimeOff[]
+  serviceSkills      ServiceStaff[]
+  assignments        AppointmentAssignment[]
+  appointmentsCreated Appointment[]           @relation("AppointmentCreator")
+  statusChanges      AppointmentStatusHistory[]
+  auditLogs          AuditLog[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model UserToken {
+  id        String       @id @default(cuid())
+  userId    String
+  purpose   TokenPurpose
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
+model Organization {
+  id             String                   @id @default(cuid())
+  name           String
+  slug           String                   @unique
+  defaultTimeZone String                  @default("Asia/Tokyo")
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  members        OrganizationMember[]
+  invitations    OrganizationInvitation[]
+  locations      Location[]
+  services       Service[]
+  resources      Resource[]
+  customers      Customer[]
+  appointments   Appointment[]
+  resourceTypes  ResourceType[]
+  auditLogs      AuditLog[]
+  emailDeliveries EmailDelivery[]
+}
+
+model OrganizationMember {
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@index([userId, isActive])
+  @@index([organizationId, role])
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrganizationRole
+  tokenHash      String           @unique
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User             @relation("InvitationSender", fields: [invitedById], references: [id])
+
+  @@index([organizationId, email])
+  @@index([expiresAt])
+}
+
+model Location {
+  id                          String                    @id @default(cuid())
+  organizationId              String
+  name                        String
+  slug                        String
+  timeZone                    String                    @default("Asia/Tokyo")
+  email                       String?
+  phone                       String?
+  postalCode                  String?
+  address                     String?
+  bookingEnabled              Boolean                   @default(false)
+  bookingMode                 BookingMode               @default(MANUAL_CONFIRM)
+  slotIntervalMinutes         Int                       @default(15)
+  minLeadTimeMinutes          Int                       @default(60)
+  maxAdvanceDays              Int                       @default(90)
+  cancellationDeadlineMinutes Int?
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+  organization                Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members                     LocationMember[]
+  businessHours               BusinessHours[]
+  scheduleExceptions          LocationScheduleException[]
+  staffSchedules              StaffSchedule[]
+  staffTimeOffs               StaffTimeOff[]
+  services                    Service[]
+  resources                   Resource[]
+  appointments                Appointment[]
+  auditLogs                   AuditLog[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model LocationMember {
+  locationId       String
+  userId           String
+  displayOrder     Int      @default(0)
+  isPubliclyBookable Boolean @default(false)
+  createdAt        DateTime @default(now())
+  location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([locationId, userId])
+  @@index([userId])
+}
+
+model BusinessHours {
+  id        String   @id @default(cuid())
+  locationId String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  location  Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, dayOfWeek])
+}
+
+model LocationScheduleException {
+  id        String                @id @default(cuid())
+  locationId String
+  date      DateTime              @db.Date
+  type      ScheduleExceptionType
+  startTime String?
+  endTime   String?
+  note      String?
+  location  Location              @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, date])
+}
+
+model StaffSchedule {
+  id        String   @id @default(cuid())
+  locationId String
+  userId    String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  location  Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, dayOfWeek])
+  @@index([userId, dayOfWeek])
+}
+
+model StaffTimeOff {
+  id        String      @id @default(cuid())
+  locationId String
+  userId    String
+  startAt   DateTime
+  endAt     DateTime
+  type      TimeOffType
+  note      String?
+  location  Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, startAt, endAt])
+  @@index([userId, startAt, endAt])
+}
+
+model Service {
+  id                  String                       @id @default(cuid())
+  organizationId      String
+  locationId          String
+  name                String
+  description         String?
+  durationMinutes     Int
+  bufferBeforeMinutes Int                          @default(0)
+  bufferAfterMinutes  Int                          @default(0)
+  priceAmount         Int?
+  currency            String                       @default("JPY")
+  requiredStaffCount  Int                          @default(1)
+  color               String                       @default("blue")
+  isPublic            Boolean                      @default(true)
+  isActive            Boolean                      @default(true)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location            Location                     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  staff               ServiceStaff[]
+  resourceRequirements ServiceResourceRequirement[]
+  appointments        Appointment[]
+
+  @@index([organizationId, locationId, isActive])
+}
+
+model ServiceStaff {
+  serviceId          String
+  userId             String
+  isPubliclyBookable Boolean @default(true)
+  service            Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, userId])
+  @@index([userId])
+}
+
+model ResourceType {
+  id             String                       @id @default(cuid())
+  organizationId String
+  name           String
+  organization   Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  resources      Resource[]
+  requirements   ServiceResourceRequirement[]
+
+  @@unique([organizationId, name])
+}
+
+model Resource {
+  id             String                @id @default(cuid())
+  organizationId String
+  locationId     String
+  resourceTypeId String
+  name           String
+  isActive       Boolean               @default(true)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location       Location              @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  resourceType   ResourceType          @relation(fields: [resourceTypeId], references: [id])
+  reservations   ResourceReservation[]
+
+  @@unique([locationId, name])
+  @@index([organizationId, locationId, resourceTypeId])
+}
+
+model ServiceResourceRequirement {
+  serviceId     String
+  resourceTypeId String
+  quantity      Int          @default(1)
+  service       Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  resourceType  ResourceType @relation(fields: [resourceTypeId], references: [id])
+
+  @@id([serviceId, resourceTypeId])
+}
+
+model Customer {
+  id                 String        @id @default(cuid())
+  organizationId     String
+  name               String
+  nameKana           String?
+  email              String?
+  phone              String?
+  note               String?
+  marketingConsentAt DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appointments       Appointment[]
+
+  @@index([organizationId, email])
+  @@index([organizationId, phone])
+  @@index([organizationId, name])
+}
+
+model Appointment {
+  id                       String                     @id @default(cuid())
+  organizationId           String
+  locationId               String
+  serviceId                String
+  customerId               String
+  status                   AppointmentStatus          @default(PENDING)
+  source                   AppointmentSource
+  startAt                  DateTime
+  endAt                    DateTime
+  occupancyStartAt         DateTime
+  occupancyEndAt           DateTime
+  serviceNameSnapshot      String
+  durationMinutesSnapshot  Int
+  priceAmountSnapshot      Int?
+  currencySnapshot         String
+  preferredStaffId         String?
+  customerNote             String?
+  internalNote             String?
+  managementTokenHash      String                     @unique
+  cancellationReason       String?
+  cancelledAt              DateTime?
+  createdById              String?
+  version                  Int                        @default(1)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  organization             Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location                 Location                   @relation(fields: [locationId], references: [id])
+  service                  Service                    @relation(fields: [serviceId], references: [id])
+  customer                 Customer                   @relation(fields: [customerId], references: [id])
+  createdBy                User?                      @relation("AppointmentCreator", fields: [createdById], references: [id])
+  assignments              AppointmentAssignment[]
+  resourceReservations     ResourceReservation[]
+  statusHistory            AppointmentStatusHistory[]
+
+  @@index([organizationId, startAt])
+  @@index([locationId, startAt, endAt])
+  @@index([locationId, status, startAt])
+  @@index([customerId, startAt])
+}
+
+model AppointmentAssignment {
+  id            String         @id @default(cuid())
+  appointmentId String
+  userId        String
+  type          AssignmentType @default(PRIMARY)
+  occupancyStartAt DateTime
+  occupancyEndAt DateTime
+  assignedById  String?
+  assignedAt    DateTime       @default(now())
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id])
+
+  @@unique([appointmentId, userId])
+  @@index([userId, occupancyStartAt, occupancyEndAt])
+}
+
+model ResourceReservation {
+  id            String      @id @default(cuid())
+  appointmentId String
+  resourceId    String
+  occupancyStartAt DateTime
+  occupancyEndAt DateTime
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  resource      Resource    @relation(fields: [resourceId], references: [id])
+
+  @@unique([appointmentId, resourceId])
+  @@index([resourceId, occupancyStartAt, occupancyEndAt])
+}
+
+model AppointmentStatusHistory {
+  id            String             @id @default(cuid())
+  appointmentId String
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus
+  changedById   String?
+  changedAt     DateTime           @default(now())
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedBy     User?              @relation(fields: [changedById], references: [id])
+
+  @@index([appointmentId, changedAt])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  actorId        String?
+  action         String
+  entityType     String
+  entityId       String
+  locationId     String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor          User?        @relation(fields: [actorId], references: [id])
+  location       Location?    @relation(fields: [locationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([locationId, createdAt])
+}
+
+model EmailDelivery {
+  id             String              @id @default(cuid())
+  organizationId String?
+  idempotencyKey String              @unique
+  recipient      String
+  template       String
+  status         EmailDeliveryStatus @default(PENDING)
+  attempts       Int                 @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
