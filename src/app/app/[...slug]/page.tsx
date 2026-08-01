@@ -1,7 +1,8 @@
 import { Construction } from "lucide-react";
 import Link from "next/link";
 
-export default function PlaceholderPage() {
+export default async function PlaceholderPage({ params }: { params: Promise<{ slug: string[] }> }) {
+  const { slug } = await params;
   return (
     <main className="content">
       <div className="panel" style={{ padding: 40, textAlign: "center" }}>
@@ -11,7 +12,7 @@ export default function PlaceholderPage() {
           style={{ margin: "0 auto 18px" }}
           aria-hidden="true"
         />
-        <h1 style={{ fontSize: 26 }}>この画面は準備中です</h1>
+        <h1 style={{ fontSize: 26 }}>{slug.join("/")} は準備中です</h1>
         <p className="lead" style={{ marginBottom: 22 }}>
           基盤の実装後、予約・カレンダー・設定画面を順次追加します。
         </p>

@@ -1,28 +1,36 @@
-import { ChevronDown, MapPin } from "lucide-react";
+import { LogOut, MapPin } from "lucide-react";
+import { signOut } from "@/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNavigation } from "@/components/mobile-navigation";
+import { getCurrentContext } from "@/lib/auth/context";
+import { db } from "@/lib/db/client";
 
-export default function DashboardLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const { membership } = await getCurrentContext();
+  const locations = await db.location.findMany({
+    where: {
+      organizationId: membership.organizationId,
+      ...(membership.role === "STAFF" ? { members: { some: { userId: membership.userId } } } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    select: { name: true },
+  });
+
+  async function logout() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
+
   return (
     <div className="app-shell">
-      <AppSidebar />
+      <AppSidebar canManage={membership.role !== "STAFF"} />
       <div className="main">
         <header className="topbar">
-          <button
-            className="location-switcher"
-            type="button"
-            aria-label="店舗を切り替える"
-          >
-            <MapPin size={16} color="var(--primary)" aria-hidden="true" />
-            青山店
-            <ChevronDown size={14} aria-hidden="true" />
-          </button>
-          <div className="user-avatar" aria-label="山田さんのアカウント">
-            YD
+          <div className="location-switcher"><MapPin size={16} color="var(--primary)" aria-hidden="true" />{locations[0]?.name ?? "店舗未登録"}</div>
+          <div className="account-menu">
+            <div className="user-avatar" aria-label={`${membership.user.name}さんのアカウント`}>{membership.user.name.slice(0, 2).toUpperCase()}</div>
+            <span>{membership.user.name}</span>
+            <form action={logout}><button className="icon-button" type="submit" aria-label="ログアウト"><LogOut size={17} /></button></form>
           </div>
         </header>
         {children}

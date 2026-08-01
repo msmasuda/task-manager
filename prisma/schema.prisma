@@ -69,6 +69,7 @@ model User {
   name               String
   email              String                   @unique
   passwordHash       String
+  sessionVersion     Int                      @default(0)
   emailVerifiedAt    DateTime?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
@@ -231,6 +232,7 @@ model LocationScheduleException {
   location  Location              @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@index([locationId, date])
+  @@unique([locationId, date])
 }
 
 model StaffSchedule {
