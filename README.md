@@ -1,4 +1,4 @@
-# Reservation Manager
+# Task Manager
 
 企業・店舗向けの予約、担当者アサイン、対応状況管理を行うWebアプリです。
 
