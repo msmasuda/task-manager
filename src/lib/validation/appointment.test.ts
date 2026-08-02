@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAppointmentSchema } from "./appointment";
+import { createAppointmentSchema, publicBookingSchema, staffBookingSchema } from "./appointment";
 
 const validInput = {
   organizationId: "cm12345678901234567890123",
@@ -32,5 +32,23 @@ describe("予約入力", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("公開予約入力", () => {
+  const booking = { organizationSlug: "example", locationSlug: "tokyo", serviceId: "service-1", startAt: "2026-08-01T01:00:00.000Z", customerName: "予約 太郎", customerEmail: "USER@example.com", customerPhone: "", customerNote: "" };
+
+  it("顧客メールアドレスを正規化する", () => {
+    expect(publicBookingSchema.parse(booking).customerEmail).toBe("user@example.com");
+  });
+
+  it("不正な開始日時を拒否する", () => {
+    expect(publicBookingSchema.safeParse({ ...booking, startAt: "2026-08-01 10:00" }).success).toBe(false);
+  });
+});
+
+describe("スタッフ代理予約入力", () => {
+  it("メールなしの電話予約を受け付ける", () => {
+    expect(staffBookingSchema.safeParse({ locationId: "location-1", serviceId: "service-1", startAt: "2026-08-01T01:00:00.000Z", customerName: "電話 顧客", customerEmail: "", customerPhone: "0312345678", source: "PHONE", customerNote: "", internalNote: "" }).success).toBe(true);
   });
 });

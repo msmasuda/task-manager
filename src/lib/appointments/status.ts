@@ -18,6 +18,10 @@ export function canTransitionAppointment(
   return transitions[from].includes(to as never);
 }
 
+export function getAllowedAppointmentTransitions(status: AppointmentStatus) {
+  return [...transitions[status]] as AppointmentStatus[];
+}
+
 export function assertAppointmentTransition(
   from: AppointmentStatus,
   to: AppointmentStatus,

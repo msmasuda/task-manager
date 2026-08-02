@@ -17,8 +17,8 @@ export default function HomePage() {
           </span>
           Reservation Manager
         </div>
-        <Link className="secondary-button" href="/app">
-          デモを見る
+        <Link className="secondary-button" href="/login">
+          ログイン
         </Link>
       </nav>
 
@@ -32,8 +32,8 @@ export default function HomePage() {
             複数店舗の空き枠、スタッフ、設備をまとめて管理。
             Web予約から来店、対応完了までを迷わず進められます。
           </p>
-          <Link className="primary-button" href="/app">
-            管理画面を確認する
+          <Link className="primary-button" href="/signup">
+            無料で始める
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
