@@ -157,4 +157,4 @@ Prisma 7の接続設定は `prisma.config.ts`、データモデルは `prisma/sc
 
 `.env.example` を参照してください。本番の秘密値をGitへコミットしないでください。
 
-本番では `DATABASE_URL`、`DIRECT_URL`、32文字以上の `AUTH_SECRET` と `TOKEN_HASH_SECRET`、公開URLを示す `APP_URL` を必ず設定します。メール送信には `RESEND_API_KEY` と、Resendで認証済みドメインの `EMAIL_FROM` が必要です。`/api/health` は環境変数とDB接続を検査し、異常時にHTTP 503を返します。
+本番では `DATABASE_URL`、32文字以上の `AUTH_SECRET` と `TOKEN_HASH_SECRET`、公開URLを示す `APP_URL` を必ず設定します。マイグレーションでは `DIRECT_URL` を優先し、未設定の場合は `DATABASE_URL` を使用します。接続先がプール接続と直接接続を分けて提供している場合は、`DATABASE_URL` にプール接続URL、`DIRECT_URL` に直接接続URLを設定してください。メール送信には `RESEND_API_KEY` と、Resendで認証済みドメインの `EMAIL_FROM` が必要です。`/api/health` は環境変数とDB接続を検査し、異常時にHTTP 503を返します。
