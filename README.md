@@ -1,4 +1,4 @@
-# Reservation Manager
+# Task Manager
 
 企業・店舗向けの予約、担当者アサイン、対応状況管理を行うWebアプリです。
 
@@ -93,6 +93,8 @@ npm run db:studio
 ```
 
 Prisma 7の接続設定は `prisma.config.ts`、データモデルは `prisma/schema.prisma` にあります。アプリ実行時は `DATABASE_URL`、migration実行時は `DIRECT_URL` を使用します。
+
+Vercelでは `vercel-build` により、デプロイ時に `prisma migrate deploy` を実行してからNext.jsをビルドします。
 
 ## 現在の実装
 
