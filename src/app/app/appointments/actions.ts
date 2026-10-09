@@ -18,19 +18,21 @@ export async function updateAppointmentStatus(formData: FormData) {
   const { appointment, membership, organization } = await requireAppointmentAccess(appointmentId);
   if (!canTransitionAppointment(appointment.status, toStatus)) redirect(`/app/appointments/${appointmentId}?error=許可されていないステータス変更です。`);
 
-  await db.$transaction(async (tx) => {
+  const updated = await db.$transaction(async (tx) => {
     const result = await tx.appointment.updateMany({
       where: { id: appointment.id, organizationId: organization.id, version: appointment.version, status: appointment.status },
       data: { status: toStatus, version: { increment: 1 }, ...(toStatus === "CANCELLED" ? { cancelledAt: new Date(), cancellationReason: reason || "店舗によるキャンセル" } : {}) },
     });
-    if (result.count !== 1) throw new Error("予約が更新されています。再読み込みしてください。");
+    if (result.count !== 1) return false;
     if (toStatus === "CANCELLED" || toStatus === "REJECTED") {
       await tx.appointmentAssignment.deleteMany({ where: { appointmentId: appointment.id } });
       await tx.resourceReservation.deleteMany({ where: { appointmentId: appointment.id } });
     }
     await tx.appointmentStatusHistory.create({ data: { appointmentId: appointment.id, fromStatus: appointment.status, toStatus, changedById: membership.userId } });
     await tx.auditLog.create({ data: { organizationId: organization.id, locationId: appointment.locationId, actorId: membership.userId, action: "appointment.status_updated", entityType: "Appointment", entityId: appointment.id, metadata: { from: appointment.status, to: toStatus, reason } } });
+    return true;
   });
+  if (!updated) redirect(`/app/appointments/${appointmentId}?error=予約が他の操作で更新されています。内容を確認して再度お試しください。`);
   const customer = await db.customer.findUnique({ where: { id: appointment.customerId } });
   if (customer?.email && ["CONFIRMED", "REJECTED", "CANCELLED"].includes(toStatus)) {
     const label = toStatus === "CONFIRMED" ? "予約が確定しました" : toStatus === "REJECTED" ? "予約をお受けできませんでした" : "予約をキャンセルしました";

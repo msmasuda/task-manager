@@ -4,6 +4,7 @@ import { Prisma } from "../../../../../../generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAppointmentAccess } from "@/lib/appointments/access";
+import { reserveSlot } from "@/lib/appointments/reserve";
 import { findInternalAvailability } from "@/lib/availability/query";
 import { db } from "@/lib/db/client";
 
@@ -23,14 +24,7 @@ export async function rescheduleAppointment(formData: FormData) {
     await db.$transaction(async (tx) => {
       const current = await tx.appointment.updateMany({ where: { id: appointment.id, version: appointment.version, status: appointment.status }, data: { startAt: slot.start, endAt: slot.end, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd, version: { increment: 1 } } });
       if (current.count !== 1) throw new Error("予約が更新されています。");
-      await tx.appointmentAssignment.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.resourceReservation.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.appointmentAssignment.createMany({ data: slot.availableStaffIds.slice(0, availability.service.requiredStaffCount).map((userId, index) => ({ appointmentId: appointment.id, userId, type: index ? "SUPPORT" : "PRIMARY", occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd, assignedById: membership.userId })) });
-      for (const requirement of availability.service.resourceRequirements) {
-        const resources = await tx.resource.findMany({ where: { organizationId: organization.id, locationId: appointment.locationId, resourceTypeId: requirement.resourceTypeId, isActive: true, reservations: { none: { appointmentId: { not: appointment.id }, occupancyStartAt: { lt: slot.occupancyEnd }, occupancyEndAt: { gt: slot.occupancyStart } } } }, orderBy: { id: "asc" }, take: requirement.quantity });
-        if (resources.length < requirement.quantity) throw new Error("設備を確保できませんでした。");
-        await tx.resourceReservation.createMany({ data: resources.map((resource) => ({ appointmentId: appointment.id, resourceId: resource.id, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      }
+      await reserveSlot(tx, appointment.id, availability.service, slot, { assignedById: membership.userId, preferredUserId: appointment.preferredStaffId });
       await tx.auditLog.create({ data: { organizationId: organization.id, locationId: appointment.locationId, actorId: membership.userId, action: "appointment.rescheduled", entityType: "Appointment", entityId: appointment.id, metadata: { from: appointment.startAt.toISOString(), to: slot.start.toISOString() } } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch {

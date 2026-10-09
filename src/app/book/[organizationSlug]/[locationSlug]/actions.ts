@@ -2,8 +2,10 @@
 
 import { Prisma } from "../../../../../generated/prisma/client";
 import { redirect } from "next/navigation";
+import { reserveSlot } from "@/lib/appointments/reserve";
 import { createToken, hashToken } from "@/lib/auth/token";
 import { findPublicAvailability } from "@/lib/availability/query";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
@@ -18,6 +20,7 @@ export async function createPublicBooking(formData: FormData) {
   const parsed = publicBookingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect(bookingUrl(String(formData.get("organizationSlug")), String(formData.get("locationSlug")), String(formData.get("serviceId")), String(formData.get("startAt")), parsed.error.issues[0]?.message ?? "入力内容を確認してください。"));
   const { organizationSlug, locationSlug, serviceId, customerName, customerEmail, customerPhone, customerNote } = parsed.data;
+  if (!(await rateLimit([`booking:ip:${await clientIp()}`, 10, 3600]))) redirect(bookingUrl(organizationSlug, locationSlug, serviceId, parsed.data.startAt, "予約の送信回数が上限に達しました。しばらく時間をおいてから再度お試しください。"));
   const startAt = new Date(parsed.data.startAt);
   const date = startAt.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
   const availability = await findPublicAvailability({ organizationSlug, locationSlug, serviceId, date });
@@ -39,16 +42,7 @@ export async function createPublicBooking(formData: FormData) {
         currencySnapshot: service.currency, customerNote, managementTokenHash: hashToken(managementToken),
       } });
       appointmentId = appointment.id;
-      const assignedStaff = slot.availableStaffIds.slice(0, service.requiredStaffCount);
-      await tx.appointmentAssignment.createMany({ data: assignedStaff.map((userId, index) => ({ appointmentId: appointment.id, userId, type: index === 0 ? "PRIMARY" : "SUPPORT", occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      for (const requirement of service.resourceRequirements) {
-        const candidates = await tx.resource.findMany({
-          where: { organizationId: service.organizationId, locationId: service.locationId, resourceTypeId: requirement.resourceTypeId, isActive: true, reservations: { none: { occupancyStartAt: { lt: slot.occupancyEnd }, occupancyEndAt: { gt: slot.occupancyStart }, appointment: { status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN", "IN_PROGRESS"] } } } } },
-          orderBy: { id: "asc" }, take: requirement.quantity,
-        });
-        if (candidates.length < requirement.quantity) throw new Error("必要な設備を確保できませんでした。");
-        await tx.resourceReservation.createMany({ data: candidates.map((resource) => ({ appointmentId: appointment.id, resourceId: resource.id, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      }
+      await reserveSlot(tx, appointment.id, service, slot);
       await tx.appointmentStatusHistory.create({ data: { appointmentId: appointment.id, toStatus: appointment.status } });
       await tx.auditLog.create({ data: { organizationId: service.organizationId, locationId: service.locationId, action: "appointment.created_public", entityType: "Appointment", entityId: appointment.id } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

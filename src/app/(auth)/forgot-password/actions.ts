@@ -5,6 +5,7 @@ import { createToken, hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { forgotPasswordSchema } from "@/lib/validation/password-reset";
 
 export type ForgotPasswordState = { complete?: boolean; developmentUrl?: string };
@@ -12,6 +13,7 @@ export type ForgotPasswordState = { complete?: boolean; developmentUrl?: string 
 export async function requestPasswordReset(_: ForgotPasswordState, formData: FormData): Promise<ForgotPasswordState> {
   const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { complete: true };
+  if (!(await rateLimit([`password-reset:ip:${await clientIp()}`, 10, 3600], [`password-reset:email:${hashToken(parsed.data.email)}`, 3, 3600]))) return { complete: true };
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (!user) return { complete: true };
 

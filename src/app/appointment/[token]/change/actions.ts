@@ -2,6 +2,7 @@
 
 import { Prisma } from "../../../../../generated/prisma/client";
 import { redirect } from "next/navigation";
+import { reserveSlot } from "@/lib/appointments/reserve";
 import { findPublicAvailability } from "@/lib/availability/query";
 import { hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
@@ -26,14 +27,7 @@ export async function changePublicAppointment(formData: FormData) {
     await db.$transaction(async (tx) => {
       const result = await tx.appointment.updateMany({ where: { id: appointment.id, version: appointment.version, status: appointment.status }, data: { startAt: slot.start, endAt: slot.end, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd, version: { increment: 1 } } });
       if (result.count !== 1) throw new Error("予約が更新されています。");
-      await tx.appointmentAssignment.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.resourceReservation.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.appointmentAssignment.createMany({ data: slot.availableStaffIds.slice(0, availability.service.requiredStaffCount).map((userId, index) => ({ appointmentId: appointment.id, userId, type: index ? "SUPPORT" : "PRIMARY", occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      for (const requirement of availability.service.resourceRequirements) {
-        const resources = await tx.resource.findMany({ where: { organizationId: appointment.organizationId, locationId: appointment.locationId, resourceTypeId: requirement.resourceTypeId, isActive: true, reservations: { none: { appointmentId: { not: appointment.id }, occupancyStartAt: { lt: slot.occupancyEnd }, occupancyEndAt: { gt: slot.occupancyStart } } } }, orderBy: { id: "asc" }, take: requirement.quantity });
-        if (resources.length < requirement.quantity) throw new Error("設備を確保できませんでした。");
-        await tx.resourceReservation.createMany({ data: resources.map((resource) => ({ appointmentId: appointment.id, resourceId: resource.id, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      }
+      await reserveSlot(tx, appointment.id, availability.service, slot, { preferredUserId: appointment.preferredStaffId });
       await tx.auditLog.create({ data: { organizationId: appointment.organizationId, locationId: appointment.locationId, action: "appointment.rescheduled_by_customer", entityType: "Appointment", entityId: appointment.id, metadata: { from: appointment.startAt.toISOString(), to: slot.start.toISOString() } } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch {

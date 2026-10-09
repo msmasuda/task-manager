@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findPublicAvailability } from "@/lib/availability/query";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  if (!(await rateLimit([`availability:ip:${await clientIp()}`, 120, 60]))) return NextResponse.json({ error: "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。" }, { status: 429 });
   const query = request.nextUrl.searchParams;
   const result = await findPublicAvailability({
     organizationSlug: query.get("organization") ?? "",

@@ -5,6 +5,7 @@ import { createToken, hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { forgotPasswordSchema } from "@/lib/validation/password-reset";
 
 export type VerificationState = { complete?: boolean; developmentUrl?: string };
@@ -12,6 +13,7 @@ export type VerificationState = { complete?: boolean; developmentUrl?: string };
 export async function resendVerification(_: VerificationState, formData: FormData): Promise<VerificationState> {
   const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { complete: true };
+  if (!(await rateLimit([`verification:ip:${await clientIp()}`, 10, 3600], [`verification:email:${hashToken(parsed.data.email)}`, 3, 3600]))) return { complete: true };
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || user.emailVerifiedAt) return { complete: true };
 

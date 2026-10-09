@@ -8,6 +8,7 @@ import { createToken, hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { signupSchema } from "@/lib/validation/auth";
 
 export type SignupState = { error?: string };
@@ -15,6 +16,7 @@ export type SignupState = { error?: string };
 export async function signup(_: SignupState, formData: FormData): Promise<SignupState> {
   const parsed = signupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!(await rateLimit([`signup:ip:${await clientIp()}`, 5, 3600]))) return { error: "登録の試行回数が上限に達しました。しばらく時間をおいてから再度お試しください。" };
 
   const { name, email, password, organizationName, organizationSlug } = parsed.data;
   const token = createToken();

@@ -35,7 +35,7 @@ async function calculateAvailability(service: LoadedService, date: string, exclu
   const [schedules, timeOffs, assignments, resources, reservations] = await Promise.all([
     db.staffSchedule.findMany({ where: { locationId: service.locationId, userId: { in: eligibleUserIds }, dayOfWeek: { in: [currentDay, previousDay] } } }),
     db.staffTimeOff.findMany({ where: { locationId: service.locationId, userId: { in: eligibleUserIds }, startAt: { lt: rangeEnd }, endAt: { gt: rangeStart } } }),
-    db.appointmentAssignment.findMany({ where: { userId: { in: eligibleUserIds }, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, appointment: { status: { in: [...blockingStatuses] }, locationId: service.locationId } } }),
+    db.appointmentAssignment.findMany({ where: { userId: { in: eligibleUserIds }, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, appointment: { status: { in: [...blockingStatuses] } } } }),
     db.resource.findMany({ where: { locationId: service.locationId, isActive: true, resourceTypeId: { in: service.resourceRequirements.map(({ resourceTypeId }) => resourceTypeId) } } }),
     db.resourceReservation.findMany({ where: { resource: { locationId: service.locationId }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointment: { status: { in: [...blockingStatuses] } } } }),
   ]);
