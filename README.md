@@ -1,4 +1,4 @@
-# Reservation Manager
+# Task Manager
 
 企業・店舗向けの予約、担当者アサイン、対応状況管理を行うWebアプリです。
 
@@ -35,7 +35,6 @@ Phase 1のアプリケーション基盤を実装済みです。確定した仕�
 - Argon2id（パスワードハッシュ）
 - Resend（認証・招待・予約メール）
 - Tailwind CSS
-- dnd-kit（カンバンのドラッグ＆ドロップ）
 - Zod（入力検証）
 - Vitest / React Testing Library / Playwright
 - Vercel（ホスティング、Preview、Production）
@@ -46,12 +45,12 @@ Phase 1のアプリケーション基盤を実装済みです。確定した仕�
 
 1. [x] 要件・基本設計
 2. [x] Next.jsプロジェクト初期化
-3. [ ] DB・スタッフ認証基盤（ログイン・初期企業登録を実装済み）
-4. [ ] 企業・店舗・スタッフ・サービス設定（基本管理画面を実装済み）
-5. [ ] 予約枠計算・予約管理
-6. [ ] 公開予約ページ・メール
-7. [ ] カレンダー・カンバン・自動アサイン
-8. [ ] テスト・Vercelデプロイ
+3. [x] DB・スタッフ認証基盤
+4. [x] 企業・店舗・スタッフ・サービス設定
+5. [x] 予約枠計算・予約管理
+6. [x] 公開予約ページ・メール
+7. [ ] カレンダー・カンバン・自動アサイン（カンバンのドラッグ＆ドロップは未実装）
+8. [ ] テスト・Vercelデプロイ（CI・Vercelビルド設定は実装済み）
 
 ## ローカル開発
 
@@ -74,6 +73,25 @@ npm run dev
 
 `http://localhost:3000` でランディングページ、`http://localhost:3000/app` で管理画面の現在の実装を確認できます。
 
+### テストデータ（seed）
+
+```bash
+npx prisma db seed
+```
+
+デモ企業「デモサロン」（`demo`）と、店舗・サービス・顧客・予約のサンプルを登録します（`prisma/seed.ts`）。`demo` がすでにある場合は何もしません。作り直す場合は `npx prisma migrate reset --force` の後に再実行してください（Prisma 7ではresetの後にseedは自動実行されません）。
+
+ログインユーザー（パスワードは全員 `password1234`）:
+
+| メールアドレス | 氏名 | 権限 | 所属店舗 |
+| --- | --- | --- | --- |
+| `owner@example.com` | 山田 太郎 | OWNER | 渋谷店 |
+| `admin@example.com` | 高橋 花子 | ADMIN | 青山店 |
+| `sato@example.com` | 佐藤 健 | STAFF | 青山店 |
+| `suzuki@example.com` | 鈴木 美咲 | STAFF | 青山店・渋谷店 |
+
+STAFFは所属店舗の予約・顧客のみ閲覧できます。公開予約ページは `http://localhost:3000/book/demo/aoyama`（自動確定）と `http://localhost:3000/book/demo/shibuya`（承認制）です。
+
 ### 品質チェック
 
 ```bash
@@ -93,6 +111,8 @@ npm run db:studio
 ```
 
 Prisma 7の接続設定は `prisma.config.ts`、データモデルは `prisma/schema.prisma` にあります。アプリ実行時は `DATABASE_URL`、migration実行時は `DIRECT_URL` を使用します。
+
+Vercelでは `vercel-build` により、デプロイ時に `prisma migrate deploy` を実行してからNext.jsをビルドします。
 
 ## 現在の実装
 

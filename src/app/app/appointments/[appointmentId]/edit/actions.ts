@@ -4,8 +4,11 @@ import { Prisma } from "../../../../../../generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAppointmentAccess } from "@/lib/appointments/access";
+import { reserveSlot } from "@/lib/appointments/reserve";
 import { findInternalAvailability } from "@/lib/availability/query";
 import { db } from "@/lib/db/client";
+import { emailDateTime, escapeHtml } from "@/lib/email/html";
+import { sendEmail } from "@/lib/email/send";
 
 export async function rescheduleAppointment(formData: FormData) {
   const appointmentId = String(formData.get("appointmentId") ?? "");
@@ -23,18 +26,15 @@ export async function rescheduleAppointment(formData: FormData) {
     await db.$transaction(async (tx) => {
       const current = await tx.appointment.updateMany({ where: { id: appointment.id, version: appointment.version, status: appointment.status }, data: { startAt: slot.start, endAt: slot.end, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd, version: { increment: 1 } } });
       if (current.count !== 1) throw new Error("予約が更新されています。");
-      await tx.appointmentAssignment.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.resourceReservation.deleteMany({ where: { appointmentId: appointment.id } });
-      await tx.appointmentAssignment.createMany({ data: slot.availableStaffIds.slice(0, availability.service.requiredStaffCount).map((userId, index) => ({ appointmentId: appointment.id, userId, type: index ? "SUPPORT" : "PRIMARY", occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd, assignedById: membership.userId })) });
-      for (const requirement of availability.service.resourceRequirements) {
-        const resources = await tx.resource.findMany({ where: { organizationId: organization.id, locationId: appointment.locationId, resourceTypeId: requirement.resourceTypeId, isActive: true, reservations: { none: { appointmentId: { not: appointment.id }, occupancyStartAt: { lt: slot.occupancyEnd }, occupancyEndAt: { gt: slot.occupancyStart } } } }, orderBy: { id: "asc" }, take: requirement.quantity });
-        if (resources.length < requirement.quantity) throw new Error("設備を確保できませんでした。");
-        await tx.resourceReservation.createMany({ data: resources.map((resource) => ({ appointmentId: appointment.id, resourceId: resource.id, occupancyStartAt: slot.occupancyStart, occupancyEndAt: slot.occupancyEnd })) });
-      }
+      await reserveSlot(tx, appointment.id, availability.service, slot, { assignedById: membership.userId, preferredUserId: appointment.preferredStaffId });
       await tx.auditLog.create({ data: { organizationId: organization.id, locationId: appointment.locationId, actorId: membership.userId, action: "appointment.rescheduled", entityType: "Appointment", entityId: appointment.id, metadata: { from: appointment.startAt.toISOString(), to: slot.start.toISOString() } } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch {
     redirect(`/app/appointments/${appointmentId}/edit?date=${date}&error=予約が競合しました。空き状況を再確認してください。`);
+  }
+  const customer = await db.customer.findUnique({ where: { id: appointment.customerId } });
+  if (customer?.email) {
+    await sendEmail({ organizationId: organization.id, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: customer.email, template: "appointment-rescheduled", subject: "予約日時が変更されました", html: `<p>${escapeHtml(customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}のご予約日時を、店舗にて${emailDateTime(slot.start)}へ変更しました。</p>` });
   }
   revalidatePath(`/app/appointments/${appointment.id}`);
   redirect(`/app/appointments/${appointment.id}?saved=1`);

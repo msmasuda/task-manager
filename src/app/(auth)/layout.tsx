@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <main className="auth-shell">
       <section className="auth-card">
         <Link className="auth-brand" href="/">
-          Reservation Manager
+          Task Manager
         </Link>
         {children}
       </section>

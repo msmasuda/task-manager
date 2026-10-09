@@ -1,5 +1,5 @@
 {
-  "name": "reservation-manager",
+  "name": "task-manager",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -49,6 +50,7 @@
     "jsdom": "27.2.0",
     "prisma": "7.9.1",
     "tailwindcss": "4.1.17",
+    "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "4.0.15"
   }

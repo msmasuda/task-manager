@@ -3,8 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Reservation Manager",
-    template: "%s | Reservation Manager",
+    default: "Task Manager",
+    template: "%s | Task Manager",
   },
   description: "複数店舗の予約と担当者アサインを、ひとつの画面で。",
 };
