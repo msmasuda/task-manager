@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db/client";
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyPasswordOrDummy } from "@/lib/auth/password";
 import { hashToken } from "@/lib/auth/token";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/validation/auth";
@@ -24,9 +24,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: parsed.data.email },
           select: { id: true, name: true, email: true, passwordHash: true, emailVerifiedAt: true, sessionVersion: true },
         });
-        if (!user || !user.emailVerifiedAt || !(await verifyPassword(user.passwordHash, parsed.data.password))) {
-          return null;
-        }
+        const passwordValid = await verifyPasswordOrDummy(user?.passwordHash, parsed.data.password);
+        if (!user || !user.emailVerifiedAt || !passwordValid) return null;
         return { id: user.id, name: user.name, email: user.email, sessionVersion: user.sessionVersion };
       },
     }),

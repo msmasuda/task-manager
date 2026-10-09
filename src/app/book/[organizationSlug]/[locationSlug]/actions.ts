@@ -32,7 +32,8 @@ export async function createPublicBooking(formData: FormData) {
   try {
     await db.$transaction(async (tx) => {
       const service = availability.service;
-      let customer = await tx.customer.findFirst({ where: { organizationId: service.organizationId, email: customerEmail } });
+      // Anyone can type any email here, so only reuse a customer record when the name matches too.
+      let customer = await tx.customer.findFirst({ where: { organizationId: service.organizationId, email: customerEmail, name: customerName } });
       customer ??= await tx.customer.create({ data: { organizationId: service.organizationId, name: customerName, email: customerEmail, phone: customerPhone || null } });
       const appointment = await tx.appointment.create({ data: {
         organizationId: service.organizationId, locationId: service.locationId, serviceId: service.id, customerId: customer.id,

@@ -4,7 +4,6 @@ import { db } from "@/lib/db/client";
 import { dayOfWeek, localDateTime, previousDate, windowsForDate } from "./date";
 import { generateAvailableSlots } from "./engine";
 
-const blockingStatuses = ["PENDING", "CONFIRMED", "CHECKED_IN", "IN_PROGRESS"] as const;
 type LoadedService = Prisma.ServiceGetPayload<{ include: {
   location: true;
   staff: { include: { user: { select: { id: true } } } };
@@ -32,12 +31,14 @@ async function calculateAvailability(service: LoadedService, date: string, exclu
   const rangeStart = localDateTime(previousDate(date), "00:00");
   const rangeEnd = localDateTime(date, "23:59", true);
   const eligibleUserIds = service.staff.map(({ userId }) => userId);
+  // Any remaining assignment/reservation row blocks, exactly like the DB exclusion constraints
+  // (cancelled/rejected appointments delete theirs; completed and no-show keep them).
   const [schedules, timeOffs, assignments, resources, reservations] = await Promise.all([
     db.staffSchedule.findMany({ where: { locationId: service.locationId, userId: { in: eligibleUserIds }, dayOfWeek: { in: [currentDay, previousDay] } } }),
     db.staffTimeOff.findMany({ where: { locationId: service.locationId, userId: { in: eligibleUserIds }, startAt: { lt: rangeEnd }, endAt: { gt: rangeStart } } }),
-    db.appointmentAssignment.findMany({ where: { userId: { in: eligibleUserIds }, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, appointment: { status: { in: [...blockingStatuses] } } } }),
+    db.appointmentAssignment.findMany({ where: { userId: { in: eligibleUserIds }, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined } }),
     db.resource.findMany({ where: { locationId: service.locationId, isActive: true, resourceTypeId: { in: service.resourceRequirements.map(({ resourceTypeId }) => resourceTypeId) } } }),
-    db.resourceReservation.findMany({ where: { resource: { locationId: service.locationId }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart }, appointment: { status: { in: [...blockingStatuses] } } } }),
+    db.resourceReservation.findMany({ where: { resource: { locationId: service.locationId }, appointmentId: excludeAppointmentId ? { not: excludeAppointmentId } : undefined, occupancyStartAt: { lt: rangeEnd }, occupancyEndAt: { gt: rangeStart } } }),
   ]);
   const staff = eligibleUserIds.map((userId) => ({
     userId,

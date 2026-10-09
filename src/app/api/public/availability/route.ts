@@ -14,6 +14,6 @@ export async function GET(request: NextRequest) {
   if (!result) return NextResponse.json({ error: "対象の店舗またはサービスが見つかりません。" }, { status: 404 });
   return NextResponse.json({
     service: { id: result.service.id, name: result.service.name, durationMinutes: result.service.durationMinutes },
-    slots: result.slots.map((slot) => ({ start: slot.start.toISOString(), end: slot.end.toISOString(), availableStaffIds: slot.availableStaffIds })),
+    slots: result.slots.map((slot) => ({ start: slot.start.toISOString(), end: slot.end.toISOString() })),
   });
 }

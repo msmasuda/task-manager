@@ -19,6 +19,9 @@ export async function signup(_: SignupState, formData: FormData): Promise<Signup
   if (!(await rateLimit([`signup:ip:${await clientIp()}`, 5, 3600]))) return { error: "登録の試行回数が上限に達しました。しばらく時間をおいてから再度お試しください。" };
 
   const { name, email, password, organizationName, organizationSlug } = parsed.data;
+  if (await db.organization.findUnique({ where: { slug: organizationSlug }, select: { id: true } })) return { error: "企業URL用IDはすでに使用されています。" };
+  // Respond exactly like a new signup so the form does not reveal which emails are registered.
+  if (await db.user.findUnique({ where: { email }, select: { id: true } })) redirect(`/verify-email/sent?${new URLSearchParams({ email })}`);
   const token = createToken();
   let userTokenId = "";
   try {

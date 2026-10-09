@@ -55,7 +55,10 @@ export async function inviteStaff(formData: FormData) {
     subject: `${organization.name}からスタッフ招待が届きました`,
     html: `<p>${escapeHtml(organization.name)}のスタッフとして招待されました。</p><p>次のリンクから7日以内に招待を承認してください。</p><p><a href="${escapeHtml(url)}">招待を承認する</a></p>`,
   });
-  redirect(result.sent ? "/app/settings/staff?sent=1" : `/app/settings/staff?invitation=${encodeURIComponent(token)}`);
+  if (result.sent) redirect("/app/settings/staff?sent=1");
+  // Never put the raw token in a production URL (browser history, logs, Referer); re-inviting revokes this one.
+  if (process.env.NODE_ENV === "production") staffError("招待メールを送信できませんでした。時間をおいて再度招待してください。");
+  redirect(`/app/settings/staff?invitation=${encodeURIComponent(token)}`);
 }
 
 export async function revokeInvitation(formData: FormData) {
