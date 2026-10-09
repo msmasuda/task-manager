@@ -74,6 +74,25 @@ npm run dev
 
 `http://localhost:3000` でランディングページ、`http://localhost:3000/app` で管理画面の現在の実装を確認できます。
 
+### テストデータ（seed）
+
+```bash
+npx prisma db seed
+```
+
+デモ企業「デモサロン」（`demo`）と、店舗・サービス・顧客・予約のサンプルを登録します（`prisma/seed.ts`）。`demo` がすでにある場合は何もしません。作り直す場合は `npx prisma migrate reset --force` の後に再実行してください（Prisma 7ではresetの後にseedは自動実行されません）。
+
+ログインユーザー（パスワードは全員 `password1234`）:
+
+| メールアドレス | 氏名 | 権限 | 所属店舗 |
+| --- | --- | --- | --- |
+| `owner@example.com` | 山田 太郎 | OWNER | 渋谷店 |
+| `admin@example.com` | 高橋 花子 | ADMIN | 青山店 |
+| `sato@example.com` | 佐藤 健 | STAFF | 青山店 |
+| `suzuki@example.com` | 鈴木 美咲 | STAFF | 青山店・渋谷店 |
+
+STAFFは所属店舗の予約・顧客のみ閲覧できます。公開予約ページは `http://localhost:3000/book/demo/aoyama`（自動確定）と `http://localhost:3000/book/demo/shibuya`（承認制）です。
+
 ### 品質チェック
 
 ```bash
