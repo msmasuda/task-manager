@@ -20,6 +20,10 @@ describe("店舗設定入力", () => {
   it("受付可能日数の上限を検証する", () => {
     expect(locationSettingsSchema.safeParse({ ...validLocation, maxAdvanceDays: "731" }).success).toBe(false);
   });
+
+  it("空き枠計算が未対応のタイムゾーンを拒否する", () => {
+    expect(locationSettingsSchema.safeParse({ ...validLocation, timeZone: "America/New_York" }).success).toBe(false);
+  });
 });
 
 describe("サービス設定入力", () => {

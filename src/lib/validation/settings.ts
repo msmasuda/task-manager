@@ -9,14 +9,15 @@ const slug = z
 export const organizationSettingsSchema = z.object({
   name: z.string().trim().min(1, "企業名を入力してください。"),
   slug,
-  defaultTimeZone: z.string().trim().min(1),
+  // Availability calculation only supports Asia/Tokyo for now.
+  defaultTimeZone: z.literal("Asia/Tokyo", "タイムゾーンはAsia/Tokyoのみ対応しています。"),
 });
 
 export const locationSettingsSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "店舗名を入力してください。"),
   slug,
-  timeZone: z.string().trim().min(1),
+  timeZone: z.literal("Asia/Tokyo", "タイムゾーンはAsia/Tokyoのみ対応しています。"),
   email: z.string().trim().email("メールアドレスの形式が正しくありません。").or(z.literal("")),
   phone: z.string().trim().max(30).optional().default(""),
   postalCode: z.string().trim().max(20).optional().default(""),

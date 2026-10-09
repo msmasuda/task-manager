@@ -7,6 +7,14 @@ const runtimeSchema = z.object({
   APP_URL: z.string().url(),
 });
 
+// Absolute URL for links in emails. Falls back to localhost only outside production,
+// so a missing APP_URL fails loudly instead of mailing customers localhost links.
+export function appUrl(path: string) {
+  const base = process.env.APP_URL;
+  if (!base && process.env.NODE_ENV === "production") throw new Error("APP_URLが設定されていません。");
+  return `${base ?? "http://localhost:3000"}${path}`;
+}
+
 export function checkRuntimeEnvironment() {
   return runtimeSchema.safeParse({
     DATABASE_URL: process.env.DATABASE_URL,

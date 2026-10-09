@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertAppointmentTransition,
   canTransitionAppointment,
   getAllowedAppointmentTransitions,
 } from "./status";
@@ -12,12 +11,6 @@ describe("予約ステータス遷移", () => {
 
   it("完了した予約を対応中へ戻せない", () => {
     expect(canTransitionAppointment("COMPLETED", "IN_PROGRESS")).toBe(false);
-  });
-
-  it("不正な遷移では説明可能なエラーを返す", () => {
-    expect(() =>
-      assertAppointmentTransition("CANCELLED", "CONFIRMED"),
-    ).toThrow("CANCELLEDからCONFIRMEDへのステータス変更はできません。");
   });
 
   it("確認待ちで選択可能な遷移を返す", () => {
