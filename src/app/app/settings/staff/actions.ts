@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireOrganizationManager } from "@/lib/auth/context";
 import { createToken, hashToken } from "@/lib/auth/token";
+import { appUrl } from "@/lib/config/environment";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
@@ -46,7 +47,7 @@ export async function inviteStaff(formData: FormData) {
     });
     return invitation;
   });
-  const url = `${process.env.APP_URL ?? "http://localhost:3000"}/invite/${token}`;
+  const url = appUrl(`/invite/${token}`);
   const result = await sendEmail({
     organizationId: organization.id,
     idempotencyKey: `staff-invitation:${invitation.id}`,

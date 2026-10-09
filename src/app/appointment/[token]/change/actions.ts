@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { reserveSlot } from "@/lib/appointments/reserve";
 import { findPublicAvailability } from "@/lib/availability/query";
 import { hashToken } from "@/lib/auth/token";
+import { appUrl } from "@/lib/config/environment";
 import { db } from "@/lib/db/client";
-import { escapeHtml } from "@/lib/email/html";
+import { emailDateTime, escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
 
 export async function changePublicAppointment(formData: FormData) {
@@ -37,8 +38,8 @@ export async function changePublicAppointment(formData: FormData) {
     redirect(`/appointment/${token}/change?date=${date}&error=予約が競合しました。空き状況を再確認してください。`);
   }
   if (appointment.customer.email) {
-    const url = `${process.env.APP_URL ?? "http://localhost:3000"}/appointment/${token}`;
-    await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: appointment.customer.email, template: "appointment-rescheduled", subject: nextStatus === "PENDING" ? "予約日時の変更を受け付けました" : "予約日時を変更しました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>予約日時を${escapeHtml(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "long", timeStyle: "short" }).format(slot.start))}へ変更しました。${nextStatus === "PENDING" ? "店舗が確認後、確定のご連絡をお送りします。" : ""}</p><p><a href="${escapeHtml(url)}">予約内容を確認する</a></p>` });
+    const url = appUrl(`/appointment/${token}`);
+    await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: appointment.customer.email, template: "appointment-rescheduled", subject: nextStatus === "PENDING" ? "予約日時の変更を受け付けました" : "予約日時を変更しました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>予約日時を${emailDateTime(slot.start)}へ変更しました。${nextStatus === "PENDING" ? "店舗が確認後、確定のご連絡をお送りします。" : ""}</p><p><a href="${escapeHtml(url)}">予約内容を確認する</a></p>` });
   }
   redirect(`/appointment/${token}?changed=1`);
 }

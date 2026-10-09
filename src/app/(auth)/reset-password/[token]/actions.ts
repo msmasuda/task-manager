@@ -19,7 +19,6 @@ export async function resetPassword(_: { error?: string }, formData: FormData): 
     const claimed = await tx.userToken.updateMany({ where: { id: userToken.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
     if (claimed.count !== 1) throw new Error("再設定リンクはすでに使用されています。");
     await tx.user.update({ where: { id: userToken.userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
-    await tx.session.deleteMany({ where: { userId: userToken.userId } });
   });
   redirect("/login?reset=1");
 }

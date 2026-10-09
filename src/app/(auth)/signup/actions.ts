@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { addHours } from "date-fns";
 import { hashPassword } from "@/lib/auth/password";
 import { createToken, hashToken } from "@/lib/auth/token";
+import { appUrl } from "@/lib/config/environment";
 import { db } from "@/lib/db/client";
 import { escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
@@ -55,7 +56,7 @@ export async function signup(_: SignupState, formData: FormData): Promise<Signup
     throw cause;
   }
 
-  const url = `${process.env.APP_URL ?? "http://localhost:3000"}/verify-email/${token}`;
+  const url = appUrl(`/verify-email/${token}`);
   const result = await sendEmail({
     idempotencyKey: `email-verification:${userTokenId}`, recipient: email, template: "email-verification",
     subject: "メールアドレスを確認してください",

@@ -323,15 +323,6 @@ Prisma migrationで表現できない排他制約は、SQLを追加したmigrati
 | emailVerifiedAt | DateTime? |
 | createdAt / updatedAt | DateTime |
 
-#### Session
-
-| フィールド | 型・制約 |
-|---|---|
-| id | String, PK |
-| sessionToken | String, unique |
-| userId | String, FK |
-| expires | DateTime |
-
 #### Organization
 
 | フィールド | 型・制約 |
@@ -604,7 +595,7 @@ tests/
 
 ### スタッフ認証
 
-- Auth.js Credentials Providerとデータベースセッション
+- Auth.js Credentials ProviderとJWTセッション（`User.sessionVersion` の増加で既存セッションを失効）
 - メールアドレス確認を必須とする
 - パスワードは12文字以上、Argon2idでハッシュ化
 - Cookieは `HttpOnly`、`Secure`（本番）、`SameSite=Lax`

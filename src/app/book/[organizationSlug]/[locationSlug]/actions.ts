@@ -6,8 +6,9 @@ import { reserveSlot } from "@/lib/appointments/reserve";
 import { createToken, hashToken } from "@/lib/auth/token";
 import { findPublicAvailability } from "@/lib/availability/query";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { appUrl } from "@/lib/config/environment";
 import { db } from "@/lib/db/client";
-import { escapeHtml } from "@/lib/email/html";
+import { emailDateTime, escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
 import { publicBookingSchema } from "@/lib/validation/appointment";
 
@@ -50,14 +51,14 @@ export async function createPublicBooking(formData: FormData) {
   } catch {
     redirect(bookingUrl(organizationSlug, locationSlug, serviceId, parsed.data.startAt, "予約が競合しました。空き状況を再確認してください。"));
   }
-  const appointmentUrl = `${process.env.APP_URL ?? "http://localhost:3000"}/appointment/${managementToken}`;
+  const appointmentUrl = appUrl(`/appointment/${managementToken}`);
   await sendEmail({
     organizationId: availability.service.organizationId,
     idempotencyKey: `appointment-created:${appointmentId}`,
     recipient: customerEmail,
     template: "appointment-created",
     subject: availability.service.location.bookingMode === "AUTO_CONFIRM" ? "予約が確定しました" : "予約を受け付けました",
-    html: `<p>${escapeHtml(customerName)} 様</p><p>${escapeHtml(availability.service.name)}の予約を受け付けました。</p><p>日時: ${escapeHtml(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "long", timeStyle: "short" }).format(slot.start))}</p><p><a href="${escapeHtml(appointmentUrl)}">予約内容を確認する</a></p>`,
+    html: `<p>${escapeHtml(customerName)} 様</p><p>${escapeHtml(availability.service.name)}の予約を受け付けました。</p><p>日時: ${emailDateTime(slot.start)}</p><p><a href="${escapeHtml(appointmentUrl)}">予約内容を確認する</a></p>`,
   });
   redirect(`/appointment/${managementToken}?created=1`);
 }

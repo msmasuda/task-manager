@@ -7,7 +7,7 @@ import { requireAppointmentAccess } from "@/lib/appointments/access";
 import { reserveSlot } from "@/lib/appointments/reserve";
 import { findInternalAvailability } from "@/lib/availability/query";
 import { db } from "@/lib/db/client";
-import { escapeHtml } from "@/lib/email/html";
+import { emailDateTime, escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
 
 export async function rescheduleAppointment(formData: FormData) {
@@ -34,7 +34,7 @@ export async function rescheduleAppointment(formData: FormData) {
   }
   const customer = await db.customer.findUnique({ where: { id: appointment.customerId } });
   if (customer?.email) {
-    await sendEmail({ organizationId: organization.id, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: customer.email, template: "appointment-rescheduled", subject: "予約日時が変更されました", html: `<p>${escapeHtml(customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}のご予約日時を、店舗にて${escapeHtml(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "long", timeStyle: "short" }).format(slot.start))}へ変更しました。</p>` });
+    await sendEmail({ organizationId: organization.id, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: customer.email, template: "appointment-rescheduled", subject: "予約日時が変更されました", html: `<p>${escapeHtml(customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}のご予約日時を、店舗にて${emailDateTime(slot.start)}へ変更しました。</p>` });
   }
   revalidatePath(`/app/appointments/${appointment.id}`);
   redirect(`/app/appointments/${appointment.id}?saved=1`);
