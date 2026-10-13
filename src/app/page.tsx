@@ -15,7 +15,7 @@ export default function HomePage() {
           <span className="brand-mark">
             <CalendarCheck size={18} aria-hidden="true" />
           </span>
-          Reservation Manager
+          Task Manager
         </div>
         <Link className="secondary-button" href="/login">
           ログイン

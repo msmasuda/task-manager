@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
-import { escapeHtml } from "@/lib/email/html";
+import { emailDateTime, escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
 
 export async function cancelPublicAppointment(formData: FormData) {
@@ -26,7 +26,7 @@ export async function cancelPublicAppointment(formData: FormData) {
     await tx.auditLog.create({ data: { organizationId: appointment.organizationId, locationId: appointment.locationId, action: "appointment.cancelled_by_customer", entityType: "Appointment", entityId: appointment.id, metadata: { reason } } });
   });
   if (appointment.customer.email) {
-    await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-cancelled:${appointment.id}`, recipient: appointment.customer.email, template: "appointment-cancelled", subject: "予約をキャンセルしました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}の予約をキャンセルしました。</p><p>日時: ${escapeHtml(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", dateStyle: "long", timeStyle: "short" }).format(appointment.startAt))}</p>` });
+    await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-cancelled:${appointment.id}`, recipient: appointment.customer.email, template: "appointment-cancelled", subject: "予約をキャンセルしました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}の予約をキャンセルしました。</p><p>日時: ${emailDateTime(appointment.startAt)}</p>` });
   }
   redirect(`/appointment/${token}?cancelled=1`);
 }

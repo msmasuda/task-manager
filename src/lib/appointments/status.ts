@@ -21,12 +21,3 @@ export function canTransitionAppointment(
 export function getAllowedAppointmentTransitions(status: AppointmentStatus) {
   return [...transitions[status]] as AppointmentStatus[];
 }
-
-export function assertAppointmentTransition(
-  from: AppointmentStatus,
-  to: AppointmentStatus,
-) {
-  if (!canTransitionAppointment(from, to)) {
-    throw new Error(`${from}から${to}へのステータス変更はできません。`);
-  }
-}

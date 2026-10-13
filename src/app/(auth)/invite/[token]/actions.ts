@@ -47,6 +47,9 @@ export async function acceptAsExistingUser(formData: FormData) {
   const invitation = await getInvitation(token);
   if (!invitation) inviteError(token, "招待は無効、期限切れ、または承認済みです。");
   if (session.user.email?.toLowerCase() !== invitation.email.toLowerCase()) inviteError(token, "招待先とログイン中のメールアドレスが一致しません。");
+  // ponytail: one active organization per user, since getCurrentContext has no organization switcher; add one to allow multi-org.
+  const otherMembership = await db.organizationMember.findFirst({ where: { userId: session.user.id, isActive: true, organizationId: { not: invitation.organizationId } } });
+  if (otherMembership) inviteError(token, "すでに別の企業に所属しているため、この招待は承認できません。");
 
   await db.$transaction(async (tx) => {
     const claimed = await tx.organizationInvitation.updateMany({ where: { id: invitation.id, acceptedAt: null, revokedAt: null }, data: { acceptedAt: new Date() } });

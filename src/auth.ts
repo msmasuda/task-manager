@@ -1,7 +1,9 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db/client";
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyPasswordOrDummy } from "@/lib/auth/password";
+import { hashToken } from "@/lib/auth/token";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/validation/auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -16,14 +18,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
+        if (!(await rateLimit([`login:ip:${await clientIp()}`, 30, 900], [`login:email:${hashToken(parsed.data.email)}`, 10, 900]))) return null;
 
         const user = await db.user.findUnique({
           where: { email: parsed.data.email },
           select: { id: true, name: true, email: true, passwordHash: true, emailVerifiedAt: true, sessionVersion: true },
         });
-        if (!user || !user.emailVerifiedAt || !(await verifyPassword(user.passwordHash, parsed.data.password))) {
-          return null;
-        }
+        const passwordValid = await verifyPasswordOrDummy(user?.passwordHash, parsed.data.password);
+        if (!user || !user.emailVerifiedAt || !passwordValid) return null;
         return { id: user.id, name: user.name, email: user.email, sessionVersion: user.sessionVersion };
       },
     }),

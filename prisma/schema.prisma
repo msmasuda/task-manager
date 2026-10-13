@@ -73,7 +73,6 @@ model User {
   emailVerifiedAt    DateTime?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
-  sessions           Session[]
   memberships        OrganizationMember[]
   locationMemberships LocationMember[]
   invitationsSent    OrganizationInvitation[] @relation("InvitationSender")
@@ -85,17 +84,6 @@ model User {
   appointmentsCreated Appointment[]           @relation("AppointmentCreator")
   statusChanges      AppointmentStatusHistory[]
   auditLogs          AuditLog[]
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expires])
 }
 
 model UserToken {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireOrganizationManager } from "@/lib/auth/context";
+import { appUrl } from "@/lib/config/environment";
 import { db } from "@/lib/db/client";
 import { Field, Notice } from "@/components/settings-form";
 import { inviteStaff, revokeInvitation, updateStaff } from "./actions";
@@ -34,7 +35,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
     <header className="page-heading"><div><p className="eyebrow">設定</p><h1>スタッフ管理</h1><p className="lead">スタッフの招待、権限、所属店舗を管理します。</p></div></header>
     <Notice error={query.error} saved={query.saved} />
     {query.sent && <p className="form-success">招待メールを送信しました。</p>}
-    {query.invitation && <section className="invite-result"><strong>招待を作成しました</strong><p>メール送信連携前のため、次のURLを対象者へ安全な方法で共有してください。この画面を離れると再表示できません。</p><code>{`${process.env.APP_URL ?? "http://localhost:3000"}/invite/${query.invitation}`}</code></section>}
+    {query.invitation && <section className="invite-result"><strong>招待を作成しました</strong><p>メール送信連携前のため、次のURLを対象者へ安全な方法で共有してください。この画面を離れると再表示できません。</p><code>{appUrl(`/invite/${query.invitation}`)}</code></section>}
     <div className="staff-layout">
       <section className="panel location-list"><h2 className="panel-title">スタッフ</h2>{members.map((member) => <Link className={`location-list-item${selected?.userId === member.userId ? " active" : ""}`} href={`/app/settings/staff?edit=${member.userId}`} key={member.userId}><strong>{member.user.name}</strong><small>{roleLabels[member.role]}・{member.isActive ? "有効" : "停止中"}</small></Link>)}</section>
       <div className="staff-main">
