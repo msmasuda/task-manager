@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
-    "@prisma/adapter-pg": "7.9.1",
-    "@prisma/client": "7.9.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "date-fns": "4.1.0",
     "lucide-react": "0.468.0",
-    "next": "16.2.12",
+    "next": "16.4.2",
     "next-auth": "^5.0.0-beta.32",
     "pg": "8.16.3",
     "react": "19.2.8",
@@ -46,12 +46,12 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
     "eslint": "9.39.1",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.4.2",
     "jsdom": "27.2.0",
-    "prisma": "7.9.1",
+    "prisma": "7.10.1",
     "tailwindcss": "4.1.17",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
-    "vitest": "4.0.15"
+    "vitest": "4.1.12"
   }
 }
