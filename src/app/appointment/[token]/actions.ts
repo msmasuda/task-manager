@@ -5,10 +5,12 @@ import { hashToken } from "@/lib/auth/token";
 import { db } from "@/lib/db/client";
 import { emailDateTime, escapeHtml } from "@/lib/email/html";
 import { sendEmail } from "@/lib/email/send";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function cancelPublicAppointment(formData: FormData) {
   const token = String(formData.get("token") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  if (!(await rateLimit([`appointment-cancel:ip:${await clientIp()}`, 20, 3600]))) redirect(`/appointment/${encodeURIComponent(token)}?error=cancel`);
   const appointment = await db.appointment.findUnique({ where: { managementTokenHash: hashToken(token) }, include: { location: true, customer: true } });
   if (!appointment || !["PENDING", "CONFIRMED"].includes(appointment.status)) redirect(`/appointment/${encodeURIComponent(token)}?error=cancel`);
   const deadline = new Date(appointment.startAt.getTime() - (appointment.location.cancellationDeadlineMinutes ?? 0) * 60_000);
@@ -28,5 +30,5 @@ export async function cancelPublicAppointment(formData: FormData) {
   if (appointment.customer.email) {
     await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-cancelled:${appointment.id}`, recipient: appointment.customer.email, template: "appointment-cancelled", subject: "予約をキャンセルしました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>${escapeHtml(appointment.serviceNameSnapshot)}の予約をキャンセルしました。</p><p>日時: ${emailDateTime(appointment.startAt)}</p>` });
   }
-  redirect(`/appointment/${token}?cancelled=1`);
+  redirect(`/appointment/${encodeURIComponent(token)}?cancelled=1`);
 }
