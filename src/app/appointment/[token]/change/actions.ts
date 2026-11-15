@@ -22,7 +22,7 @@ export async function changePublicAppointment(formData: FormData) {
   const date = startAt.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
   const availability = await findPublicAvailability({ organizationSlug: appointment.location.organization.slug, locationSlug: appointment.location.slug, serviceId: appointment.serviceId, date, excludeAppointmentId: appointment.id });
   const slot = availability?.slots.find((item) => item.start.getTime() === startAt.getTime());
-  if (!availability || !slot) redirect(`/appointment/${token}/change?date=${date}&error=選択した枠は利用できません。`);
+  if (!availability || !slot) redirect(`/appointment/${encodeURIComponent(token)}/change?date=${encodeURIComponent(date)}&error=選択した枠は利用できません。`);
 
   // Approval-required locations re-approve a customer's new time.
   const nextStatus = appointment.location.bookingMode === "MANUAL_CONFIRM" ? "PENDING" : appointment.status;
@@ -35,11 +35,11 @@ export async function changePublicAppointment(formData: FormData) {
       await tx.auditLog.create({ data: { organizationId: appointment.organizationId, locationId: appointment.locationId, action: "appointment.rescheduled_by_customer", entityType: "Appointment", entityId: appointment.id, metadata: { from: appointment.startAt.toISOString(), to: slot.start.toISOString() } } });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch {
-    redirect(`/appointment/${token}/change?date=${date}&error=予約が競合しました。空き状況を再確認してください。`);
+    redirect(`/appointment/${encodeURIComponent(token)}/change?date=${encodeURIComponent(date)}&error=予約が競合しました。空き状況を再確認してください。`);
   }
   if (appointment.customer.email) {
     const url = appUrl(`/appointment/${token}`);
     await sendEmail({ organizationId: appointment.organizationId, idempotencyKey: `appointment-rescheduled:${appointment.id}:${appointment.version + 1}`, recipient: appointment.customer.email, template: "appointment-rescheduled", subject: nextStatus === "PENDING" ? "予約日時の変更を受け付けました" : "予約日時を変更しました", html: `<p>${escapeHtml(appointment.customer.name)} 様</p><p>予約日時を${emailDateTime(slot.start)}へ変更しました。${nextStatus === "PENDING" ? "店舗が確認後、確定のご連絡をお送りします。" : ""}</p><p><a href="${escapeHtml(url)}">予約内容を確認する</a></p>` });
   }
-  redirect(`/appointment/${token}?changed=1`);
+  redirect(`/appointment/${encodeURIComponent(token)}?changed=1`);
 }
