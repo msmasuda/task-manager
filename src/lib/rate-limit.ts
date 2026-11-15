@@ -5,8 +5,8 @@ type Rule = [key: string, limit: number, windowSeconds: number];
 // Fixed-window counters in Upstash Redis via its REST pipeline API. Returns false when any rule is exceeded.
 // ponytail: fails open when Redis is unconfigured (local dev) or unreachable, so a Redis outage never locks out logins.
 export async function rateLimit(...rules: Rule[]) {
-  const url = process.env.RATE_LIMIT_REDIS_URL;
-  const token = process.env.RATE_LIMIT_REDIS_TOKEN;
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
   if (!url || !token) return true;
   try {
     const response = await fetch(`${url}/pipeline`, {

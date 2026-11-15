@@ -14,15 +14,15 @@ describe("rateLimit", () => {
   });
 
   it("allows everything when Redis is not configured", async () => {
-    vi.stubEnv("RATE_LIMIT_REDIS_URL", "");
+    vi.stubEnv("KV_REST_API_URL", "");
     const fetchMock = mockCounts(999);
     expect(await rateLimit(["key", 1, 60])).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects when any rule is over its limit", async () => {
-    vi.stubEnv("RATE_LIMIT_REDIS_URL", "https://redis.example");
-    vi.stubEnv("RATE_LIMIT_REDIS_TOKEN", "token");
+    vi.stubEnv("KV_REST_API_URL", "https://redis.example");
+    vi.stubEnv("KV_REST_API_TOKEN", "token");
     mockCounts(3, 11);
     expect(await rateLimit(["ip", 10, 60], ["email", 10, 60])).toBe(false);
     mockCounts(10, 10);
@@ -30,8 +30,8 @@ describe("rateLimit", () => {
   });
 
   it("fails open when Redis is unreachable", async () => {
-    vi.stubEnv("RATE_LIMIT_REDIS_URL", "https://redis.example");
-    vi.stubEnv("RATE_LIMIT_REDIS_TOKEN", "token");
+    vi.stubEnv("KV_REST_API_URL", "https://redis.example");
+    vi.stubEnv("KV_REST_API_TOKEN", "token");
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("down"); }));
     expect(await rateLimit(["ip", 1, 60])).toBe(true);
   });
