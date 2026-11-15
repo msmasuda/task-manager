@@ -9,8 +9,8 @@ const runtimeSchema = z.object({
 
 // rateLimit fails open without Redis, so production must not start without it.
 const productionSchema = runtimeSchema.extend({
-  RATE_LIMIT_REDIS_URL: z.string().url(),
-  RATE_LIMIT_REDIS_TOKEN: z.string().min(1),
+  KV_REST_API_URL: z.string().url(),
+  KV_REST_API_TOKEN: z.string().min(1),
 });
 
 // Absolute URL for links in emails. Falls back to localhost only outside production,
@@ -27,7 +27,7 @@ export function checkRuntimeEnvironment() {
     AUTH_SECRET: process.env.AUTH_SECRET,
     TOKEN_HASH_SECRET: process.env.TOKEN_HASH_SECRET,
     APP_URL: process.env.APP_URL,
-    RATE_LIMIT_REDIS_URL: process.env.RATE_LIMIT_REDIS_URL,
-    RATE_LIMIT_REDIS_TOKEN: process.env.RATE_LIMIT_REDIS_TOKEN,
+    KV_REST_API_URL: process.env.KV_REST_API_URL,
+    KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
   });
 }

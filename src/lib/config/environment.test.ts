@@ -26,11 +26,11 @@ describe("実行環境設定", () => {
     vi.stubEnv("AUTH_SECRET", "a".repeat(32));
     vi.stubEnv("TOKEN_HASH_SECRET", "b".repeat(32));
     vi.stubEnv("APP_URL", "https://example.com");
-    vi.stubEnv("RATE_LIMIT_REDIS_URL", "");
-    vi.stubEnv("RATE_LIMIT_REDIS_TOKEN", "");
+    vi.stubEnv("KV_REST_API_URL", "");
+    vi.stubEnv("KV_REST_API_TOKEN", "");
     expect(checkRuntimeEnvironment().success).toBe(false);
-    vi.stubEnv("RATE_LIMIT_REDIS_URL", "https://redis.example.com");
-    vi.stubEnv("RATE_LIMIT_REDIS_TOKEN", "token");
+    vi.stubEnv("KV_REST_API_URL", "https://redis.example.com");
+    vi.stubEnv("KV_REST_API_TOKEN", "token");
     expect(checkRuntimeEnvironment().success).toBe(true);
   });
 });
